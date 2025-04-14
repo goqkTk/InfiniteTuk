@@ -2,6 +2,9 @@ let tpCount = 0;
 let currentUser = null;
 let jawCount = 0;
 
+// Socket.IO 연결
+const socket = io();
+
 const authContainer = document.getElementById('auth-container');
 const gameContainer = document.getElementById('game-container');
 const tukTop = document.getElementById('tuk-top');
@@ -19,6 +22,45 @@ const showRankingsBtn = document.getElementById('show-rankings-btn');
 const closeRankingsBtn = document.getElementById('close-rankings-btn');
 const topRankings = document.getElementById('top-rankings');
 const otherRankings = document.getElementById('other-rankings');
+
+// Socket.IO 연결 이벤트
+socket.on('connect', () => {
+    // 저장된 사용자 정보가 있으면 로그인 상태 복원
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) {
+        try {
+            const user = JSON.parse(savedUser);
+            // 서버에서 최신 사용자 정보 가져오기
+            fetch(`/api/user/${user.id}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        currentUser = data.user;
+                        tpCount = data.user.tuk_points;
+                        tpCountElement.textContent = tpCount;
+                        
+                        // Socket.IO 연결 설정
+                        socket.emit('user-login', currentUser.id);
+                        
+                        showGame();
+                        updateRankings();
+                        restoreJaw();
+                    } else {
+                        // 사용자 정보를 가져올 수 없는 경우 로그아웃
+                        localStorage.removeItem('currentUser');
+                        alert('세션이 만료되었습니다. 다시 로그인해주세요.');
+                    }
+                })
+                .catch(error => {
+                    localStorage.removeItem('currentUser');
+                });
+        } catch (error) {
+            localStorage.removeItem('currentUser');
+        }
+    }
+});
+
+socket.on('disconnect', () => {});
 
 // 탭 전환
 tabBtns.forEach(btn => {
@@ -61,6 +103,11 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         if (data.success) {
             currentUser = data.user;
             tpCount = data.user.tuk_points;
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            
+            // Socket.IO 연결 설정
+            socket.emit('user-login', currentUser.id);
+            
             showGame();
             updateRankings();
             restoreJaw();
@@ -76,11 +123,6 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 document.getElementById('register-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
-    
-    if (formData.get('password') !== formData.get('confirmPassword')) {
-        alert('비밀번호가 일치하지 않습니다.');
-        return;
-    }
     
     try {
         const response = await fetch('/api/register', {
@@ -113,6 +155,7 @@ logoutBtn.addEventListener('click', () => {
     currentUser = null;
     tpCount = 0;
     jawCount = 0;
+    localStorage.removeItem('currentUser');
     resetJaw();
     showAuth();
 });
@@ -161,6 +204,9 @@ gameContainer.addEventListener('click', (e) => {
     
     // 점수 업데이트
     updateScore();
+    
+    // 클릭 효과 추가
+    addClickEffect();
 });
 
 // 턱 추가 함수
@@ -172,28 +218,12 @@ function addJaw() {
 }
 
 // 점수 업데이트 함수
-async function updateScore() {
-    try {
-        const response = await fetch('/api/update-score', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: currentUser.id,
-                points: 1
-            })
-        });
-        
-        if (response.ok) {
-            // 실시간으로 랭킹 업데이트
-            updateRankings();
-            // 현재 사용자의 TP도 업데이트
-            currentUser.tuk_points = tpCount;
-        }
-    } catch (error) {
-        console.error('점수 업데이트 실패:', error);
-    }
+function updateScore() {
+    // 서버에 TP 업데이트 알림
+    socket.emit('update-tp', {
+        userId: currentUser.id,
+        tp: tpCount
+    });
 }
 
 // 랭킹 보기 버튼 클릭
@@ -257,5 +287,78 @@ async function updateRankings() {
     }
 }
 
+// Socket.IO 이벤트 처리
+socket.on('tp-update', (data) => {
+    if (currentUser && data.userId === currentUser.id) {
+        tpCount = data.tp;
+        tpCountElement.textContent = tpCount;
+        restoreJaw();
+    }
+});
+
+socket.on('rankings-update', (rankings) => {
+    if (Array.isArray(rankings)) {
+        // 상위 3명 랭킹
+        const topThree = rankings.slice(0, 3);
+        topRankings.innerHTML = topThree
+            .map((rank, index) => {
+                const medals = ['gold', 'silver', 'bronze'];
+                const medalIcons = ['🥇', '🥈', '🥉'];
+                return `
+                    <div class="ranking-item ${medals[index]}">
+                        <div class="ranking-position">${index + 1}</div>
+                        <div class="ranking-medal">${medalIcons[index]}</div>
+                        <div class="ranking-info">
+                            <div class="ranking-username">${rank.username}</div>
+                            <div class="ranking-points">${rank.tuk_points || 0} TP</div>
+                        </div>
+                    </div>
+                `;
+            })
+            .join('');
+
+        // 나머지 랭킹
+        const others = rankings.slice(3);
+        otherRankings.innerHTML = others
+            .map((rank, index) => `
+                <div class="ranking-item">
+                    <div class="ranking-position">${index + 4}</div>
+                    <div class="ranking-info">
+                        <div class="ranking-username">${rank.username}</div>
+                        <div class="ranking-points">${rank.tuk_points || 0} TP</div>
+                    </div>
+                </div>
+            `)
+            .join('');
+    }
+});
+
 // 주기적으로 랭킹 업데이트
-setInterval(updateRankings, 5000); 
+setInterval(updateRankings, 5000);
+
+// 클릭 효과 추가 함수
+function addClickEffect() {
+    // 턱 이미지 컨테이너에 클릭 효과 추가
+    const tukImageContainer = document.querySelector('.tuk-image-container');
+    
+    // 이미 애니메이션이 진행 중이면 중복 실행 방지
+    if (tukImageContainer.classList.contains('clicked')) {
+        return;
+    }
+    
+    tukImageContainer.classList.add('clicked');
+    
+    // 마지막으로 추가된 턱에 반짝이는 효과 추가
+    const lastJaw = document.querySelector('.tuk-add:last-child');
+    if (lastJaw) {
+        lastJaw.classList.add('sparkle');
+    }
+    
+    // 애니메이션 종료 후 클래스 제거
+    setTimeout(() => {
+        tukImageContainer.classList.remove('clicked');
+        if (lastJaw) {
+            lastJaw.classList.remove('sparkle');
+        }
+    }, 200); // 애니메이션 시간을 0.2초로 맞춤
+} 

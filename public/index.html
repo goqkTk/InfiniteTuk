@@ -6,6 +6,7 @@
     <title>무한 턱 클리커</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
     <div class="auth-container" id="auth-container">
@@ -15,18 +16,17 @@
                 <button class="tab-btn" data-tab="register">회원가입</button>
             </div>
             
-            <form id="login-form" class="auth-form active">
+            <form id="login-form" class="auth-form active" autocomplete="off">
                 <h2>로그인</h2>
-                <input type="text" placeholder="아이디" name="username" required>
-                <input type="password" placeholder="비밀번호" name="password" required>
+                <input type="text" placeholder="아이디" name="username" required autocomplete="off">
+                <input type="password" placeholder="비밀번호" name="password" required autocomplete="off">
                 <button type="submit">로그인</button>
             </form>
             
-            <form id="register-form" class="auth-form">
+            <form id="register-form" class="auth-form" autocomplete="off">
                 <h2>회원가입</h2>
-                <input type="text" placeholder="아이디" name="username" required>
-                <input type="password" placeholder="비밀번호" name="password" required>
-                <input type="password" placeholder="비밀번호 확인" name="confirmPassword" required>
+                <input type="text" placeholder="아이디" name="username" required autocomplete="off">
+                <input type="password" placeholder="비밀번호" name="password" required autocomplete="off">
                 <button type="submit">회원가입</button>
             </form>
         </div>

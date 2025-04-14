@@ -8,6 +8,10 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Socket.IO 설정
+const http = require('http').createServer(app);
+const io = require('socket.io')(http);
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
@@ -167,6 +171,74 @@ app.post('/api/login', (req, res) => {
     );
 });
 
+// Socket.IO 연결 처리
+const userSockets = new Map(); // 사용자 ID별 소켓 연결 관리
+
+io.on('connection', (socket) => {
+    // 사용자 로그인 시 소켓 연결
+    socket.on('user-login', (userId) => {
+        if (!userSockets.has(userId)) {
+            userSockets.set(userId, new Set());
+        }
+        userSockets.get(userId).add(socket);
+        
+        // 초기 랭킹 데이터 전송
+        db.query(
+            'SELECT username, tuk_points FROM users ORDER BY tuk_points DESC LIMIT 10',
+            (err, rankings) => {
+                if (err) return;
+                socket.emit('rankings-update', rankings || []);
+            }
+        );
+    });
+
+    // TP 업데이트 처리
+    socket.on('update-tp', (data) => {
+        const { userId, tp } = data;
+        
+        // 데이터베이스 업데이트
+        db.query(
+            'UPDATE users SET tuk_points = ? WHERE id = ?',
+            [tp, userId],
+            (err, result) => {
+                if (err) return;
+                
+                // 해당 사용자의 모든 세션에 TP 업데이트 알림
+                const userSocketsSet = userSockets.get(userId);
+                if (userSocketsSet) {
+                    userSocketsSet.forEach(socket => {
+                        socket.emit('tp-update', {
+                            userId: userId,
+                            tp: tp
+                        });
+                    });
+                }
+                
+                // 랭킹 업데이트
+                db.query(
+                    'SELECT username, tuk_points FROM users ORDER BY tuk_points DESC LIMIT 10',
+                    (err, rankings) => {
+                        if (err) return;
+                        io.emit('rankings-update', rankings || []);
+                    }
+                );
+            }
+        );
+    });
+
+    // 연결 해제 시 소켓 제거
+    socket.on('disconnect', () => {
+        userSockets.forEach((sockets, userId) => {
+            if (sockets.has(socket)) {
+                sockets.delete(socket);
+                if (sockets.size === 0) {
+                    userSockets.delete(userId);
+                }
+            }
+        });
+    });
+});
+
 // 점수 업데이트 API
 app.post('/api/update-score', (req, res) => {
     const { userId, points } = req.body;
@@ -179,6 +251,44 @@ app.post('/api/update-score', (req, res) => {
                 console.error('점수 업데이트 에러:', err);
                 return res.json({ success: false, error: '점수 업데이트 중 오류가 발생했습니다.' });
             }
+            
+            // 업데이트된 사용자 정보 조회
+            db.query(
+                'SELECT id, username, tuk_points FROM users WHERE id = ?',
+                [userId],
+                (err, results) => {
+                    if (err) {
+                        console.error('사용자 정보 조회 에러:', err);
+                        return;
+                    }
+                    
+                    const updatedUser = results[0];
+                    
+                    // 해당 사용자의 모든 세션에 TP 업데이트 알림
+                    const userSocketsSet = userSockets.get(userId);
+                    if (userSocketsSet) {
+                        userSocketsSet.forEach(socket => {
+                            socket.emit('tp-update', {
+                                userId: updatedUser.id,
+                                tp: updatedUser.tuk_points
+                            });
+                        });
+                    }
+                    
+                    // 랭킹 업데이트 후 모든 클라이언트에게 알림
+                    db.query(
+                        'SELECT username, tuk_points FROM users ORDER BY tuk_points DESC LIMIT 10',
+                        (err, rankings) => {
+                            if (err) {
+                                console.error('랭킹 조회 에러:', err);
+                                return;
+                            }
+                            io.emit('rankings-update', rankings || []);
+                        }
+                    );
+                }
+            );
+            
             res.json({ success: true });
         }
     );
@@ -198,7 +308,36 @@ app.get('/api/rankings', (req, res) => {
     );
 });
 
+// 사용자 정보 조회 API
+app.get('/api/user/:id', (req, res) => {
+    const userId = req.params.id;
+    
+    db.query(
+        'SELECT id, username, tuk_points FROM users WHERE id = ?',
+        [userId],
+        (err, results) => {
+            if (err) {
+                console.error('사용자 정보 조회 에러:', err);
+                return res.json({ success: false, error: '사용자 정보 조회 중 오류가 발생했습니다.' });
+            }
+            
+            if (results.length === 0) {
+                return res.json({ success: false, error: '사용자를 찾을 수 없습니다.' });
+            }
+            
+            res.json({ 
+                success: true, 
+                user: {
+                    id: results[0].id,
+                    username: results[0].username,
+                    tuk_points: results[0].tuk_points || 0
+                }
+            });
+        }
+    );
+});
+
 // 서버 시작
-app.listen(port, '0.0.0.0', () => {
+http.listen(port, '0.0.0.0', () => {
     console.log(`서버가 http://0.0.0.0:${port} 에서 실행 중입니다.`);
 }); 
