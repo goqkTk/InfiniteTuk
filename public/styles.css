@@ -1,0 +1,444 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+img {
+    -webkit-user-drag: none;
+    -khtml-user-drag: none;
+    -moz-user-drag: none;
+    -o-user-drag: none;
+    user-drag: none;
+    pointer-events: none;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f0f0f0;
+    min-height: 100vh;
+    width: 100vw;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    touch-action: manipulation;
+}
+
+.auth-container {
+    width: 100%;
+    max-width: 400px;
+    padding: 2rem;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: white;
+    z-index: 1000;
+}
+
+.form-container {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+}
+
+.form-tabs {
+    display: flex;
+    margin-bottom: 2rem;
+    border-bottom: 2px solid #eee;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 1rem;
+    border: none;
+    background: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+    color: #666;
+    transition: all 0.3s;
+}
+
+.tab-btn.active {
+    color: #4CAF50;
+    border-bottom: 2px solid #4CAF50;
+    margin-bottom: -2px;
+}
+
+.auth-form {
+    display: none;
+}
+
+.auth-form.active {
+    display: block;
+}
+
+.auth-form h2 {
+    margin-bottom: 1.5rem;
+    color: #333;
+    text-align: center;
+}
+
+.auth-form input {
+    width: 100%;
+    padding: 0.8rem;
+    margin-bottom: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+}
+
+.auth-form button {
+    width: 100%;
+    padding: 0.8rem;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.auth-form button:hover {
+    background-color: #45a049;
+}
+
+.game-container {
+    width: 100vw;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.stats {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 150px;
+}
+
+.tuk-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+.tuk-image-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 30%;
+    position: relative;
+}
+
+#tuk-top {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    z-index: 2;
+}
+
+#tuk-bottom {
+    width: calc(100% + 19px);
+    height: auto;
+    object-fit: contain;
+    z-index: 2;
+    margin-left: -1px;
+}
+
+#tuk-add-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 1;
+}
+
+.tuk-add {
+    width: calc(100% - 20px);
+    height: 1px;
+    background-image: url('tuk-add.png');
+    background-size: 100% 1px;
+    background-repeat: no-repeat;
+    background-position: center;
+    margin: 0 auto;
+    padding: 0;
+    line-height: 0;
+}
+
+#logout-btn {
+    padding: 0.5rem 1rem;
+    background-color: #f44336;
+    color: white;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+#logout-btn:hover {
+    background-color: #da190b;
+}
+
+#rankings {
+    margin-top: 1rem;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.ranking-item {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    background-color: #f8f9fa;
+}
+
+/* 턱 부분만 늘어나도록 설정 */
+.tuk-jaw {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 30%; /* 턱 부분의 높이 (이미지에 따라 조정 필요) */
+    background-color: transparent;
+    transform-origin: top center;
+    transition: transform 0.1s;
+}
+
+.show-rankings-btn {
+    padding: 0.5rem 1rem;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s;
+    width: 100%;
+}
+
+.show-rankings-btn:hover {
+    background-color: #45a049;
+}
+
+.rankings-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 600px;
+    background-color: white;
+    border-radius: 1rem;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    padding: 2rem;
+}
+
+.rankings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.rankings-header h2 {
+    margin: 0;
+    color: #333;
+}
+
+.close-rankings-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #666;
+    cursor: pointer;
+    padding: 0.5rem;
+    transition: color 0.3s;
+}
+
+.close-rankings-btn:hover {
+    color: #333;
+}
+
+.rankings-content {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.top-rankings {
+    margin-bottom: 2rem;
+}
+
+.ranking-item:hover {
+    transform: translateX(5px);
+}
+
+.ranking-item.gold {
+    background: linear-gradient(135deg, #ffd700, #ffeb3b);
+    color: #000;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+}
+
+.ranking-item.silver {
+    background: linear-gradient(135deg, #C0C0C0, #E0E0E0);
+    color: #000;
+    box-shadow: 0 4px 15px rgba(192, 192, 192, 0.3);
+}
+
+.ranking-item.bronze {
+    background: linear-gradient(135deg, #cd7f32, #deb887);
+    color: #000;
+    box-shadow: 0 4px 15px rgba(205, 127, 50, 0.3);
+}
+
+.ranking-position {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-right: 1rem;
+    min-width: 30px;
+}
+
+.ranking-medal {
+    margin-right: 1rem;
+    font-size: 1.5rem;
+}
+
+.ranking-info {
+    flex-grow: 1;
+}
+
+.ranking-username {
+    font-weight: bold;
+    margin-bottom: 0.2rem;
+}
+
+.ranking-points {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.other-rankings .ranking-item {
+    background-color: #f8f9fa;
+    padding: 0.8rem;
+}
+
+/* 미디어쿼리 */
+/* 태블릿 */
+@media screen and (max-width: 1024px) {
+    .tuk-container {
+        width: 70%;
+        height: 70%;
+    }
+
+    #tuk-top {
+        width: 70%;
+    }
+
+    #tuk-bottom {
+        width: calc(70% + 19px);
+    }
+
+    .stats {
+        font-size: 20px;
+        padding: 0.8rem;
+    }
+
+    .show-rankings-btn {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.8rem;
+    }
+}
+
+/* 모바일 */
+@media screen and (max-width: 768px) {
+    .tuk-container {
+        width: 90%;
+        height: 90%;
+    }
+
+    #tuk-top {
+        width: 90%;
+    }
+
+    #tuk-bottom {
+        width: calc(90% + 3px);
+        margin-left: 0.1px;
+    }
+
+    .tuk-add {
+        width: calc(100% - 5px);
+    }
+
+    .stats {
+        font-size: 18px;
+        top: 10px;
+        left: 10px;
+        padding: 0.6rem;
+    }
+
+    .show-rankings-btn {
+        font-size: 0.8rem;
+        padding: 0.3rem 0.6rem;
+    }
+}
+
+/* 작은 모바일 */
+@media screen and (max-width: 480px) {
+    .tuk-container {
+        width: 100%;
+        height: 100%;
+    }
+
+    #tuk-top {
+        width: 100%;
+    }
+
+    #tuk-bottom {
+        width: calc(100% + 3px);
+        margin-left: 0.1px;
+    }
+
+    .tuk-add {
+        width: calc(100% - 5px);
+    }
+
+    .stats {
+        font-size: 16px;
+        padding: 0.5rem;
+    }
+
+    .show-rankings-btn {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+    }
+} 

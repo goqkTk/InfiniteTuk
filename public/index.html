@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>무한 턱 클리커</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="auth-container" id="auth-container">
+        <div class="form-container">
+            <div class="form-tabs">
+                <button class="tab-btn active" data-tab="login">로그인</button>
+                <button class="tab-btn" data-tab="register">회원가입</button>
+            </div>
+            
+            <form id="login-form" class="auth-form active">
+                <h2>로그인</h2>
+                <input type="text" placeholder="아이디" name="username" required>
+                <input type="password" placeholder="비밀번호" name="password" required>
+                <button type="submit">로그인</button>
+            </form>
+            
+            <form id="register-form" class="auth-form">
+                <h2>회원가입</h2>
+                <input type="text" placeholder="아이디" name="username" required>
+                <input type="password" placeholder="비밀번호" name="password" required>
+                <input type="password" placeholder="비밀번호 확인" name="confirmPassword" required>
+                <button type="submit">회원가입</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="game-container" id="game-container" style="display: none;">
+        <div class="stats">
+            <h2>TP: <span id="tp-count">0</span></h2>
+            <button id="show-rankings-btn" class="show-rankings-btn">랭킹 보기</button>
+            <button id="logout-btn">로그아웃</button>
+        </div>
+        
+        <div class="tuk-container">
+            <div class="tuk-image-container">
+                <img id="tuk-top" src="tuk-top.png" alt="턱 상단">
+                <div id="tuk-add-container"></div>
+                <img id="tuk-bottom" src="tuk-bottom.png" alt="턱 하단">
+            </div>
+        </div>
+    </div>
+
+    <div class="rankings-container" id="rankings-container" style="display: none;">
+        <div class="rankings-header">
+            <h2>턱 랭킹</h2>
+            <button id="close-rankings-btn" class="close-rankings-btn">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="rankings-content">
+            <div class="top-rankings" id="top-rankings">
+                <!-- 상위 3명 랭킹 -->
+            </div>
+            <div class="other-rankings" id="other-rankings">
+                <!-- 나머지 랭킹 -->
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html> 
