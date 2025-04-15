@@ -23,6 +23,12 @@ const closeRankingsBtn = document.getElementById('close-rankings-btn');
 const topRankings = document.getElementById('top-rankings');
 const otherRankings = document.getElementById('other-rankings');
 
+function escapeHtml(unsafe) {
+    const div = document.createElement('div');
+    div.textContent = unsafe;
+    return div.innerHTML;
+}
+
 // Socket.IO 연결 이벤트
 socket.on('connect', () => {
     // 저장된 사용자 정보가 있으면 로그인 상태 복원
@@ -187,6 +193,14 @@ function restoreJaw() {
     }
 }
 
+// 턱 추가 함수
+function addJaw() {
+    const jawElement = document.createElement('div');
+    jawElement.className = 'tuk-add';
+    tukAddContainer.appendChild(jawElement);
+    jawCount++;
+}
+
 // 화면 클릭 이벤트
 gameContainer.addEventListener('click', (e) => {
     if (!currentUser) return;
@@ -196,26 +210,17 @@ gameContainer.addEventListener('click', (e) => {
         return;
     }
     
-    tpCount++;
-    tpCountElement.textContent = tpCount;
+    // 서버에 클릭 이벤트 전송
+    socket.emit('click-event', {
+        userId: currentUser.id
+    });
     
     // 턱 추가
     addJaw();
     
-    // 점수 업데이트
-    updateScore();
-    
     // 클릭 효과 추가
     addClickEffect();
 });
-
-// 턱 추가 함수
-function addJaw() {
-    const jawElement = document.createElement('div');
-    jawElement.className = 'tuk-add';
-    tukAddContainer.appendChild(jawElement);
-    jawCount++;
-}
 
 // 점수 업데이트 함수
 function updateScore() {
@@ -255,7 +260,7 @@ async function updateRankings() {
                             <div class="ranking-position">${index + 1}</div>
                             <div class="ranking-medal">${medalIcons[index]}</div>
                             <div class="ranking-info">
-                                <div class="ranking-username">${rank.username}</div>
+                                <div class="ranking-username">${escapeHtml(rank.username)}</div>
                                 <div class="ranking-points">${rank.tuk_points || 0} TP</div>
                             </div>
                         </div>
@@ -270,7 +275,7 @@ async function updateRankings() {
                     <div class="ranking-item">
                         <div class="ranking-position">${index + 4}</div>
                         <div class="ranking-info">
-                            <div class="ranking-username">${rank.username}</div>
+                            <div class="ranking-username">${escapeHtml(rank.username)}</div>
                             <div class="ranking-points">${rank.tuk_points || 0} TP</div>
                         </div>
                     </div>
@@ -309,7 +314,7 @@ socket.on('rankings-update', (rankings) => {
                         <div class="ranking-position">${index + 1}</div>
                         <div class="ranking-medal">${medalIcons[index]}</div>
                         <div class="ranking-info">
-                            <div class="ranking-username">${rank.username}</div>
+                            <div class="ranking-username">${escapeHtml(rank.username)}</div>
                             <div class="ranking-points">${rank.tuk_points || 0} TP</div>
                         </div>
                     </div>
@@ -324,7 +329,7 @@ socket.on('rankings-update', (rankings) => {
                 <div class="ranking-item">
                     <div class="ranking-position">${index + 4}</div>
                     <div class="ranking-info">
-                        <div class="ranking-username">${rank.username}</div>
+                        <div class="ranking-username">${escapeHtml(rank.username)}</div>
                         <div class="ranking-points">${rank.tuk_points || 0} TP</div>
                     </div>
                 </div>
