@@ -27,7 +27,7 @@ function escapeHtml(unsafe) {
 
 // MySQL 연결 설정
 const db = mysql.createConnection({
-    host: '0.0.0.0',
+    host: 'localhost',
     user: 'root',
     password: '1234',
     database: 'infinitetuk'
