@@ -3,7 +3,6 @@ const mysql = require('mysql2');
 const cors = require('cors');
 const path = require('path');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const app = express();
@@ -28,38 +27,11 @@ function escapeHtml(unsafe) {
 
 // MySQL 연결 설정
 const db = mysql.createConnection({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '1234',
+    database: process.env.DB_NAME || 'infinitetuk'
 });
-
-// JWT 토큰 생성 함수
-function generateToken(userId) {
-    return jwt.sign(
-        { userId },
-        process.env.JWT_SECRET || 'superduperholymolylegendpublickey',
-        { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
-    );
-}
-
-// JWT 토큰 검증 미들웨어
-function authenticateToken(req, res, next) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (!token) {
-        return res.status(401).json({ success: false, error: '인증이 필요합니다.' });
-    }
-
-    jwt.verify(token, process.env.JWT_SECRET || 'superduperholymolylegendpublickey', (err, user) => {
-        if (err) {
-            return res.status(403).json({ success: false, error: '유효하지 않은 토큰입니다.' });
-        }
-        req.user = user;
-        next();
-    });
-}
 
 // 데이터베이스 연결 및 초기화
 function initializeDatabase() {
@@ -177,11 +149,11 @@ app.post('/api/login', (req, res) => {
         async (err, results) => {
             if (err) {
                 console.error('로그인 에러:', err);
-                return res.status(500).json({ success: false, error: '서버 오류가 발생했습니다.' });
+                return res.json({ success: false, error: '로그인 중 오류가 발생했습니다.' });
             }
             
             if (results.length === 0) {
-                return res.status(401).json({ success: false, error: '아이디 또는 비밀번호가 일치하지 않습니다.' });
+                return res.json({ success: false, error: '아이디 또는 비밀번호가 일치하지 않습니다.' });
             }
             
             try {
@@ -189,14 +161,11 @@ app.post('/api/login', (req, res) => {
                 const passwordMatch = await bcrypt.compare(password, user.password);
                 
                 if (!passwordMatch) {
-                    return res.status(401).json({ success: false, error: '아이디 또는 비밀번호가 일치하지 않습니다.' });
+                    return res.json({ success: false, error: '아이디 또는 비밀번호가 일치하지 않습니다.' });
                 }
-                
-                const token = generateToken(user.id);
                 
                 res.json({ 
                     success: true, 
-                    token,
                     user: {
                         id: user.id,
                         username: escapeHtml(user.username),
@@ -205,7 +174,7 @@ app.post('/api/login', (req, res) => {
                 });                
             } catch (error) {
                 console.error('비밀번호 검증 에러:', error);
-                res.status(500).json({ success: false, error: '서버 오류가 발생했습니다.' });
+                res.json({ success: false, error: '로그인 중 오류가 발생했습니다.' });
             }
         }
     );
@@ -215,31 +184,21 @@ app.post('/api/login', (req, res) => {
 const userSockets = new Map(); // 사용자 ID별 소켓 연결 관리
 
 io.on('connection', (socket) => {
-    socket.on('user-login', (token) => {
-        try {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET || 'superduperholymolylegendpublickey');
-            const userId = decoded.userId;
-            
-            if (!userSockets.has(userId)) {
-                userSockets.set(userId, new Set());
-            }
-            userSockets.get(userId).add(socket);
-            
-            // 초기 랭킹 데이터 전송
-            db.query(
-                'SELECT username, tuk_points FROM users ORDER BY tuk_points DESC',
-                (err, rankings) => {
-                    if (err) {
-                        console.error('랭킹 조회 에러:', err);
-                        return;
-                    }
-                    socket.emit('rankings-update', rankings || []);
-                }
-            );
-        } catch (error) {
-            console.error('토큰 검증 에러:', error);
-            socket.disconnect();
+    // 사용자 로그인 시 소켓 연결
+    socket.on('user-login', (userId) => {
+        if (!userSockets.has(userId)) {
+            userSockets.set(userId, new Set());
         }
+        userSockets.get(userId).add(socket);
+        
+        // 초기 랭킹 데이터 전송
+        db.query(
+            'SELECT username, tuk_points FROM users ORDER BY tuk_points DESC',
+            (err, rankings) => {
+                if (err) return;
+                socket.emit('rankings-update', rankings || []);
+            }
+        );
     });
 
     // 클릭 이벤트 처리
