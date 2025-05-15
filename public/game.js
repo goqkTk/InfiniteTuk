@@ -20,7 +20,6 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         const data = await response.json();
         if (data.success) {
             currentUser = data.user;
-            localStorage.setItem('token', data.token);
             initializeGame();
         } else {
             alert(data.error);
@@ -62,14 +61,15 @@ function initializeGame() {
     document.getElementById('auth-container').style.display = 'none';
     document.getElementById('game-container').style.display = 'flex';
     
-    // 소켓 연결
-    const token = localStorage.getItem('token');
+    // 소켓 연결 (인증 정보 포함)
     socket = io({
-        auth: { token }
+        auth: {
+            userId: currentUser.id
+        }
     });
 
     socket.on('connect_error', (error) => {
-        if (error.message === '인증이 필요합니다.' || error.message === '유효하지 않은 토큰입니다.') {
+        if (error.message === '인증이 필요합니다.') {
             alert('세션이 만료되었습니다. 다시 로그인해주세요.');
             logout();
         }
@@ -87,74 +87,27 @@ function initializeGame() {
 
     // 초기 TP 표시
     document.getElementById('tp-count').textContent = currentUser.tuk_points;
-}
 
-// 랭킹 업데이트
-async function updateRankings(rankings) {
-    const topRankings = document.getElementById('top-rankings');
-    const otherRankings = document.getElementById('other-rankings');
-    
-    topRankings.innerHTML = '';
-    otherRankings.innerHTML = '';
-
-    rankings.forEach((user, index) => {
-        const rankingItem = document.createElement('div');
-        rankingItem.className = 'ranking-item';
-        
-        if (index < 3) {
-            rankingItem.classList.add(['gold', 'silver', 'bronze'][index]);
-        }
-
-        const position = document.createElement('div');
-        position.className = 'ranking-position';
-        position.textContent = `#${index + 1}`;
-
-        const info = document.createElement('div');
-        info.className = 'ranking-info';
-        
-        const username = document.createElement('div');
-        username.className = 'ranking-username';
-        username.textContent = user.username;
-        
-        const points = document.createElement('div');
-        points.className = 'ranking-points';
-        points.textContent = `TP: ${user.tuk_points}`;
-
-        info.appendChild(username);
-        info.appendChild(points);
-        
-        rankingItem.appendChild(position);
-        rankingItem.appendChild(info);
-
-        if (index < 3) {
-            topRankings.appendChild(rankingItem);
-        } else {
-            otherRankings.appendChild(rankingItem);
+    // 클릭 이벤트 리스너 추가
+    document.getElementById('click-area').addEventListener('click', () => {
+        if (socket && socket.connected) {
+            socket.emit('click-event');
         }
     });
 }
 
-// 클릭 이벤트 처리
-document.querySelector('.tuk-image-container').addEventListener('click', () => {
-    if (!socket || !currentUser) return;
-    
-    socket.emit('click-event', {});
-    
-    // 클릭 애니메이션
-    const container = document.querySelector('.tuk-image-container');
-    container.classList.add('clicked');
-    setTimeout(() => container.classList.remove('clicked'), 200);
-});
+// 랭킹 업데이트 함수
+function updateRankings(rankings) {
+    const rankingsList = document.getElementById('rankings-list');
+    if (!rankingsList) return;
 
-// 랭킹 보기 버튼
-document.getElementById('show-rankings-btn').addEventListener('click', () => {
-    document.getElementById('rankings-container').style.display = 'block';
-});
-
-// 랭킹 닫기 버튼
-document.getElementById('close-rankings-btn').addEventListener('click', () => {
-    document.getElementById('rankings-container').style.display = 'none';
-});
+    rankingsList.innerHTML = '';
+    rankings.forEach((user, index) => {
+        const li = document.createElement('li');
+        li.textContent = `${index + 1}. ${user.username}: ${user.tuk_points} TP`;
+        rankingsList.appendChild(li);
+    });
+}
 
 // 로그아웃
 document.getElementById('logout-btn').addEventListener('click', logout);
@@ -163,7 +116,6 @@ function logout() {
     if (socket) {
         socket.disconnect();
     }
-    localStorage.removeItem('token');
     currentUser = null;
     document.getElementById('game-container').style.display = 'none';
     document.getElementById('auth-container').style.display = 'block';

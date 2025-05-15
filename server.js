@@ -3,6 +3,9 @@ const mysql = require('mysql2');
 const cors = require('cors');
 const path = require('path');
 const bcrypt = require('bcrypt');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const xss = require('xss-clean');
 require('dotenv').config();
 
 const app = express();
@@ -16,6 +19,17 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
+// 보안 미들웨어 설정
+app.use(helmet());
+app.use(xss());
+
+// 로그인 시도 제한 설정
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15분
+    max: 5 // IP당 최대 로그인 시도 횟수
+});
+app.use('/api/login', loginLimiter);
+
 function escapeHtml(unsafe) {
     return unsafe
         .replace(/&/g, "&amp;")
@@ -27,10 +41,10 @@ function escapeHtml(unsafe) {
 
 // MySQL 연결 설정
 const db = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: '1234',
-    database: 'infinitetuk'
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME || 'infinitetuk'
 });
 
 // 데이터베이스 연결 및 초기화
@@ -183,9 +197,21 @@ app.post('/api/login', (req, res) => {
 // Socket.IO 연결 처리
 const userSockets = new Map(); // 사용자 ID별 소켓 연결 관리
 
+// 사용자 인증 미들웨어
+io.use((socket, next) => {
+    const userId = socket.handshake.auth.userId;
+    if (!userId) {
+        return next(new Error('인증이 필요합니다.'));
+    }
+    socket.userId = userId;
+    next();
+});
+
 io.on('connection', (socket) => {
+    const userId = socket.userId;
+    
     // 사용자 로그인 시 소켓 연결
-    socket.on('user-login', (userId) => {
+    socket.on('user-login', () => {
         if (!userSockets.has(userId)) {
             userSockets.set(userId, new Set());
         }
@@ -196,15 +222,17 @@ io.on('connection', (socket) => {
             'SELECT username, tuk_points FROM users ORDER BY tuk_points DESC',
             (err, rankings) => {
                 if (err) return;
-                socket.emit('rankings-update', rankings || []);
+                const safeRankings = rankings.map(user => ({
+                    username: escapeHtml(user.username),
+                    tuk_points: user.tuk_points
+                }));
+                socket.emit('rankings-update', safeRankings || []);
             }
         );
     });
 
     // 클릭 이벤트 처리
-    socket.on('click-event', (data) => {
-        const { userId } = data;
-        
+    socket.on('click-event', () => {
         // 데이터베이스에서 현재 점수 조회
         db.query(
             'SELECT tuk_points FROM users WHERE id = ?',
@@ -238,7 +266,11 @@ io.on('connection', (socket) => {
                             'SELECT username, tuk_points FROM users ORDER BY tuk_points DESC',
                             (err, rankings) => {
                                 if (err) return;
-                                io.emit('rankings-update', rankings || []);
+                                const safeRankings = rankings.map(user => ({
+                                    username: escapeHtml(user.username),
+                                    tuk_points: user.tuk_points
+                                }));
+                                io.emit('rankings-update', safeRankings || []);
                             }
                         );
                     }
@@ -269,14 +301,23 @@ app.get('/api/rankings', (req, res) => {
                 console.error('랭킹 조회 에러:', err);
                 return res.json([]);
             }
-            res.json(results || []);
+            // XSS 방지를 위한 이스케이프 처리
+            const safeResults = results.map(user => ({
+                username: escapeHtml(user.username),
+                tuk_points: user.tuk_points
+            }));
+            res.json(safeResults || []);
         }
     );
 });
 
 // 사용자 정보 조회 API
 app.get('/api/user/:id', (req, res) => {
-    const userId = req.params.id;
+    const userId = parseInt(req.params.id);
+    
+    if (isNaN(userId)) {
+        return res.json({ success: false, error: '유효하지 않은 사용자 ID입니다.' });
+    }
     
     db.query(
         'SELECT id, username, tuk_points FROM users WHERE id = ?',
@@ -295,7 +336,7 @@ app.get('/api/user/:id', (req, res) => {
                 success: true, 
                 user: {
                     id: results[0].id,
-                    username: results[0].username,
+                    username: escapeHtml(results[0].username),
                     tuk_points: results[0].tuk_points || 0
                 }
             });
