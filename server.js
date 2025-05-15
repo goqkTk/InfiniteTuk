@@ -4,26 +4,10 @@ const cors = require('cors');
 const path = require('path');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const helmet = require('helmet');
-const xss = require('xss-clean');
 require('dotenv').config();
 
 const app = express();
 const port = process.env.PORT || 3000;
-
-// 보안 미들웨어 설정
-app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-            imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'", "ws:", "wss:"]
-        }
-    }
-}));
-app.use(xss());
 
 // Socket.IO 설정
 const http = require('http').createServer(app);
