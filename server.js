@@ -27,10 +27,10 @@ function escapeHtml(unsafe) {
 
 // MySQL 연결 설정
 const db = mysql.createConnection({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '1234',
-    database: process.env.DB_NAME || 'infinitetuk'
+    host: 'localhost',
+    user: 'root',
+    password: '1234',
+    database: 'infinitetuk'
 });
 
 // 데이터베이스 연결 및 초기화
